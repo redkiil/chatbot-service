@@ -1,0 +1,6 @@
+auth_info_baileys
+node_modules
+s
+.env
+src/none.ts
+dist

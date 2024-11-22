@@ -1,0 +1,10 @@
+node_modules
+*.log
+.gitignore
+auth_info_baileys
+.dockerignore
+cmds
+Dockerfile
+data/db.json
+s
+dist
