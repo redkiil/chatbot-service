@@ -1,18 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2020",              // Target modern JavaScript
-    "module": "commonjs",            // Use CommonJS for Node.js compatibility
+    "module": "Node16",              // Use Node.js module semantics
     "strict": true,                  // Enable strict type checking
     "esModuleInterop": true,         // Allow importing CommonJS modules
     "skipLibCheck": true,            // Skip library type checking
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",              // Output directory for compiled files
     "rootDir": "./src",              // Source directory
-    "moduleResolution": "node",      // Resolve modules like Node.js
+    "moduleResolution": "Node16",    // Resolve modules like modern Node.js
     "resolveJsonModule": true,       // Support JSON imports
-    "baseUrl": "./src",              // Base path for modules
     "paths": {                       // Optional: Define path aliases
-      "@utils/*": ["utils/*"]
+      "@utils/*": ["./src/utils/*"]
     }
   },
   "include": ["src/**/*.ts"],        // Include all TypeScript files
