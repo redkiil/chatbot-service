@@ -80,6 +80,7 @@ Incoming WhatsApp messages are published with routing keys:
 - `whatsapp.incoming.image`
 - `whatsapp.incoming.audio`
 - `whatsapp.incoming.document`
+- `whatsapp.incoming.location`
 - `whatsapp.incoming.unknown`
 
 Example payload:
@@ -129,3 +130,22 @@ Incoming document/ZIP payload:
 Set `WHATSAPP_DOWNLOAD_INCOMING_DOCUMENTS=false` to publish document metadata without embedding the base64 file in RabbitMQ.
 
 For media messages, the payload includes a `media` object with WhatsApp media metadata such as `url`, `directPath`, `mediaKey`, `mimetype`, and `fileLength`.
+
+Incoming location payload:
+
+```json
+{
+  "event": "whatsapp.message.received",
+  "remoteJid": "5511999999999@s.whatsapp.net",
+  "senderJid": "5511999999999@s.whatsapp.net",
+  "fromMe": false,
+  "type": "location",
+  "location": {
+    "latitude": -15.6014,
+    "longitude": -56.0979,
+    "name": "Dropped pin",
+    "address": "Cuiabá, MT",
+    "url": "https://maps.google.com/?q=-15.6014,-56.0979"
+  }
+}
+```

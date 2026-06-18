@@ -22,7 +22,7 @@ const qrcode = require('qrcode-terminal') as typeof import('qrcode-terminal');
 
 type JsonRecord = Record<string, unknown>;
 type OutgoingMessageType = 'text' | 'image' | 'audio' | 'document';
-type IncomingMessageType = 'text' | 'image' | 'audio' | 'document' | 'unknown';
+type IncomingMessageType = 'text' | 'image' | 'audio' | 'document' | 'location' | 'unknown';
 
 interface NormalizedOutgoingJob {
     destinations: string[];
@@ -45,6 +45,15 @@ interface IncomingMediaPayload {
     mediaBase64?: string;
 }
 
+interface IncomingLocationPayload {
+    latitude: number;
+    longitude: number;
+    name?: string;
+    address?: string;
+    url?: string;
+    live?: boolean;
+}
+
 interface IncomingGroupPayload {
     jid: string;
     subject?: string;
@@ -60,6 +69,7 @@ interface IncomingWhatsAppMessage {
     type: IncomingMessageType;
     text?: string;
     media?: IncomingMediaPayload;
+    location?: IncomingLocationPayload;
     group?: IncomingGroupPayload;
     timestamp: number;
     pushName?: string;
@@ -101,7 +111,7 @@ const INCOMING_EXCHANGE_NAME = getEnv('WHATSAPP_INCOMING_EXCHANGE', 'WhatsBotExc
 const INCOMING_EXCHANGE_TYPE = getEnv('WHATSAPP_INCOMING_EXCHANGE_TYPE', 'direct');
 const INCOMING_QUEUE_NAME = getEnv('WHATSAPP_INCOMING_QUEUE', 'WhatsIncoming');
 const INCOMING_ROUTING_KEY_PREFIX = getEnv('WHATSAPP_INCOMING_ROUTING_KEY_PREFIX', 'whatsapp.incoming');
-const INCOMING_MESSAGE_TYPES: IncomingMessageType[] = ['text', 'image', 'audio', 'document', 'unknown'];
+const INCOMING_MESSAGE_TYPES: IncomingMessageType[] = ['text', 'image', 'audio', 'document', 'location', 'unknown'];
 
 let rabbitConnection: amqp.Connection | null = null;
 let rabbitChannel: amqp.Channel | null = null;
@@ -507,6 +517,14 @@ type IncomingMediaSource = {
     ptt?: boolean | null;
 };
 
+type IncomingLocationSource = {
+    degreesLatitude?: number | null;
+    degreesLongitude?: number | null;
+    name?: string | null;
+    address?: string | null;
+    url?: string | null;
+};
+
 async function buildIncomingMediaPayload(
     source: IncomingMediaSource,
     message?: WAMessage,
@@ -544,6 +562,24 @@ async function buildIncomingMediaPayload(
     }
 
     return payload;
+}
+
+function buildIncomingLocationPayload(source: IncomingLocationSource, live = false): IncomingLocationPayload | null {
+    const latitude = toOptionalNumber(source.degreesLatitude);
+    const longitude = toOptionalNumber(source.degreesLongitude);
+
+    if (latitude === undefined || longitude === undefined) {
+        return null;
+    }
+
+    return {
+        latitude,
+        longitude,
+        ...(source.name ? { name: source.name } : {}),
+        ...(source.address ? { address: source.address } : {}),
+        ...(source.url ? { url: source.url } : {}),
+        ...(live ? { live: true } : {}),
+    };
 }
 
 function logIncomingDocument(payload: IncomingMediaPayload): void {
@@ -612,6 +648,31 @@ async function extractIncomingMessage(message: WAMessage): Promise<IncomingWhats
             text: content.documentMessage.caption ?? undefined,
             media,
         };
+    }
+
+    if (content.locationMessage || content.liveLocationMessage) {
+        const location = buildIncomingLocationPayload(
+            (content.locationMessage ?? content.liveLocationMessage) as IncomingLocationSource,
+            Boolean(content.liveLocationMessage),
+        );
+
+        if (location) {
+            return {
+                ...basePayload,
+                type: 'location',
+                location,
+            };
+        }
+
+        console.warn(
+            'Incoming location message did not include usable coordinates:',
+            JSON.stringify({
+                remoteJid,
+                senderJid,
+                hasLocationMessage: Boolean(content.locationMessage),
+                hasLiveLocationMessage: Boolean(content.liveLocationMessage),
+            }),
+        );
     }
 
     const text = content.conversation ?? content.extendedTextMessage?.text;
